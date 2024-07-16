@@ -1,0 +1,85 @@
+function matchContractorsAndEmployers() {
+  var contractorSheetId = '1jCKDtqajjueKx24t8ZwOmVHQYNBOrG6MZlJrCOO7D3w';
+  var employerSheetId = '1V_7kBJfvrp2JBcTJezn7U4e8fKX-_t0H0b9ajMo3uKo';
+
+
+  try {
+    var contractorSheet = SpreadsheetApp.openById(contractorSheetId);
+    Logger.log("Successfully opened Contractor Sheet: " + contractorSheet.getName());
+   
+    var employerSheet = SpreadsheetApp.openById(employerSheetId);
+    Logger.log("Successfully opened Employer Sheet: " + employerSheet.getName());
+   
+    var contractorData = contractorSheet.getSheets()[0].getDataRange().getValues();
+    var employerData = employerSheet.getSheets()[0].getDataRange().getValues();
+   
+    // Remove headers
+    contractorData.shift();
+    employerData.shift();
+   
+    var matches = [];
+
+
+    // Loop through employers and contractors to find matches
+    employerData.forEach(function(employer) {
+      var employerEmail = employer[0];
+      var employerCompanySize = employer[1];
+      var employerTradeType = employer[2];
+      var employerProjectInterest = employer[3].split(',').map(skill => skill.trim()); // Split and trim skills
+     
+      // Check if employer has valid project interests
+      if (typeof employerProjectInterest === 'object' && employerProjectInterest.length > 0 && employerProjectInterest[0] !== '') {
+        contractorData.forEach(function(contractor) {
+          var contractorEmail = contractor[0];
+          var contractorCompanySize = contractor[1];
+          var contractorTradeType = contractor[2];
+          var contractorProjectInterest = contractor[3].split(',').map(skill => skill.trim()); // Split and trim skills
+         
+          // Check for matching criteria
+          var matchCount = 0;
+         
+          if (employerCompanySize === contractorCompanySize) {
+            matchCount++;
+          }
+         
+          if (employerTradeType === contractorTradeType) {
+            matchCount++;
+          }
+         
+          // Check for matching project interests
+          var matchingSkills = employerProjectInterest.filter(skill => contractorProjectInterest.includes(skill));
+          if (matchingSkills.length > 0) {
+            matchCount++;
+          }
+         
+          // Minimum matching criteria for a match
+          if (matchCount >= 1) {
+            matches.push([employerEmail, contractorEmail, matchingSkills.join(', ')]);
+            Logger.log("Match found: Employer (" + employerEmail + ") and Contractor (" + contractorEmail + ") with skills: " + matchingSkills.join(', '));
+          }
+        });
+      }
+    });
+   
+    // Log the total matches found
+    Logger.log("Total matches found: " + matches.length);
+   
+    // Write the matches to a new sheet
+    var matchSheet = contractorSheet.insertSheet('Form');
+    matchSheet.getRange(1, 1, matches.length, 3).setValues(matches);
+   
+    Logger.log("Matches written to sheet 'Matches' in Contractor's Google Sheet.");
+   
+  } catch (e) {
+    Logger.log("Error: " + e.toString());
+  }
+}
+
+
+  // Example: Sending email notification
+  var recipientEmail = 'lekiatechllc@gmail.com'; // Replace with your email address
+  var subject = 'Matching Contractors and Employers Notification';
+  var message = 'Matching results found! Check the Matches sheet in Google Sheets.';
+
+
+  MailApp.sendEmail(recipientEmail, subject, message);
